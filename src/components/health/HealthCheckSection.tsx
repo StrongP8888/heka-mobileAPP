@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import MiniLineChart from '../charts/MiniLineChart';
 import { recognizeImage, preprocessImage, type RecognitionResult } from '../../services/recognitionService';
 import RecognitionConfirm from './RecognitionConfirm';
@@ -18,7 +18,34 @@ interface ExplainState {
   metricId: string;
   loading: boolean;
   text: string | null;
-  error: boolean;
+  errorMsg: string | null;
+  retryAfter: number | null; // seconds countdown for rate limit
+}
+
+const LS_CACHE_KEY = 'heka-explain-cache';
+
+function loadLsCache(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(LS_CACHE_KEY) || '{}');
+  } catch { return {}; }
+}
+
+function saveLsCache(cache: Record<string, string>) {
+  try {
+    localStorage.setItem(LS_CACHE_KEY, JSON.stringify(cache));
+  } catch { /* quota exceeded — ignore */ }
+}
+
+// Simple request queue to avoid rate limits
+let lastRequestTime = 0;
+async function throttledFetch(url: string, init: RequestInit): Promise<Response> {
+  const now = Date.now();
+  const elapsed = now - lastRequestTime;
+  if (elapsed < 1200) {
+    await new Promise((r) => setTimeout(r, 1200 - elapsed));
+  }
+  lastRequestTime = Date.now();
+  return fetch(url, init);
 }
 
 const initialMetrics: HealthMetric[] = [
@@ -99,19 +126,31 @@ export default function HealthCheckSection({ onAskAssistant }: Props) {
   const [recognitionResult, setRecognitionResult] = useState<RecognitionResult | null>(null);
   const [capturedImageUrl, setCapturedImageUrl] = useState<string | undefined>();
   const [explain, setExplain] = useState<ExplainState | null>(null);
-  const explainCache = useRef<Record<string, string>>({});
+  const [retryCountdown, setRetryCountdown] = useState(0);
+  const explainCache = useRef<Record<string, string>>(loadLsCache());
   const scanCameraRef = useRef<HTMLInputElement>(null);
   const scanAlbumRef = useRef<HTMLInputElement>(null);
 
+  // Countdown timer for rate limit
+  useEffect(() => {
+    if (retryCountdown <= 0) return;
+    const t = setTimeout(() => setRetryCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [retryCountdown]);
+
   const requestExplain = async (m: HealthMetric) => {
     const cacheKey = `${m.id}-${m.value}`;
+
+    // Check localStorage cache first
     if (explainCache.current[cacheKey]) {
-      setExplain({ metricId: m.id, loading: false, text: explainCache.current[cacheKey], error: false });
+      console.log(`[AI 解讀] Cache hit: ${m.name}`);
+      setExplain({ metricId: m.id, loading: false, text: explainCache.current[cacheKey], errorMsg: null, retryAfter: null });
       return;
     }
-    setExplain({ metricId: m.id, loading: true, text: null, error: false });
 
-    // Gather related metrics from the same category
+    console.log(`[AI 解讀] Requesting: ${m.name} = ${m.value} ${m.unit}`);
+    setExplain({ metricId: m.id, loading: true, text: null, errorMsg: null, retryAfter: null });
+
     const related = metrics
       .filter((rm) => rm.category === m.category && rm.id !== m.id && rm.value !== null)
       .map((rm) => ({
@@ -122,7 +161,7 @@ export default function HealthCheckSection({ onAskAssistant }: Props) {
       }));
 
     try {
-      const res = await fetch('/api/explain-metric', {
+      const res = await throttledFetch('/api/explain-metric', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -135,15 +174,35 @@ export default function HealthCheckSection({ onAskAssistant }: Props) {
           relatedMetrics: related,
         }),
       });
+
+      console.log(`[AI 解讀] Response status: ${res.status}`);
       const data = await res.json();
-      if (data.explanation) {
+
+      if (res.ok && data.explanation) {
+        console.log(`[AI 解讀] Success: ${m.name}, ${data.explanation.length} chars`);
         explainCache.current[cacheKey] = data.explanation;
-        setExplain({ metricId: m.id, loading: false, text: data.explanation, error: false });
+        saveLsCache(explainCache.current);
+        setExplain({ metricId: m.id, loading: false, text: data.explanation, errorMsg: null, retryAfter: null });
+      } else if (res.status === 429) {
+        const wait = data.retryAfter || 30;
+        console.warn(`[AI 解讀] Rate limited, retry after ${wait}s`);
+        setRetryCountdown(wait);
+        setExplain({ metricId: m.id, loading: false, text: null, errorMsg: `請求太頻繁，請等待 ${wait} 秒後重試`, retryAfter: wait });
+      } else if (res.status === 401) {
+        console.error(`[AI 解讀] Auth error`);
+        setExplain({ metricId: m.id, loading: false, text: null, errorMsg: 'API 金鑰問題，請聯繫管理員', retryAfter: null });
       } else {
-        setExplain({ metricId: m.id, loading: false, text: null, error: true });
+        console.error(`[AI 解讀] Error ${res.status}: ${data.error}`);
+        setExplain({ metricId: m.id, loading: false, text: null, errorMsg: data.error || `伺服器錯誤 (${res.status})`, retryAfter: null });
       }
-    } catch {
-      setExplain({ metricId: m.id, loading: false, text: null, error: true });
+    } catch (err: any) {
+      const msg = err?.message || '未知錯誤';
+      console.error(`[AI 解讀] Network error: ${msg}`);
+      if (msg.includes('timeout') || msg.includes('abort')) {
+        setExplain({ metricId: m.id, loading: false, text: null, errorMsg: '網路逾時，請檢查網路連線後重試', retryAfter: null });
+      } else {
+        setExplain({ metricId: m.id, loading: false, text: null, errorMsg: `網路錯誤：${msg}`, retryAfter: null });
+      }
     }
   };
 
@@ -443,18 +502,24 @@ export default function HealthCheckSection({ onAskAssistant }: Props) {
                 </div>
               )}
 
-              {explain.error && (
-                <div className="text-center py-8">
-                  <p className="text-sm text-red-500 mb-2">解讀失敗</p>
-                  <button
-                    onClick={() => {
-                      const m = metrics.find((x) => x.id === explain.metricId);
-                      if (m) requestExplain(m);
-                    }}
-                    className="text-xs text-heka-purple cursor-pointer"
-                  >
-                    重試
-                  </button>
+              {explain.errorMsg && (
+                <div className="text-center py-6">
+                  <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center text-xl mx-auto mb-3">⚠️</div>
+                  <p className="text-sm text-red-500 mb-1">解讀失敗</p>
+                  <p className="text-xs text-heka-text-secondary mb-4 px-4">{explain.errorMsg}</p>
+                  {explain.retryAfter && retryCountdown > 0 ? (
+                    <p className="text-xs text-amber-500">⏳ {retryCountdown} 秒後可重試</p>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        const m = metrics.find((x) => x.id === explain.metricId);
+                        if (m) requestExplain(m);
+                      }}
+                      className="px-6 py-2 rounded-xl bg-heka-purple text-white text-sm font-medium cursor-pointer hover:bg-heka-purple-dark transition-colors"
+                    >
+                      🔄 重試
+                    </button>
+                  )}
                 </div>
               )}
 

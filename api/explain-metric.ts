@@ -15,8 +15,10 @@ export default async function handler(req: any, res: any) {
   const { metricName, value, unit, normalRange, status, elderAge, relatedMetrics } = req.body;
 
   if (!metricName || value === undefined) {
-    return res.status(400).json({ error: 'Missing metricName or value' });
+    return res.status(400).json({ error: 'Missing metricName or value', code: 'INVALID_INPUT' });
   }
+
+  console.log(`[explain-metric] Request: ${metricName} = ${value} ${unit} (${status})`);
 
   const relatedContext = relatedMetrics?.length
     ? `\n\n其他相關指標：\n${relatedMetrics.map((m: any) => `- ${m.name}: ${m.value} ${m.unit} (${m.status === 'normal' ? '正常' : m.status === 'high' ? '偏高' : '偏低'})`).join('\n')}`
@@ -57,9 +59,35 @@ export default async function handler(req: any, res: any) {
     });
 
     const text = response.content[0].type === 'text' ? response.content[0].text : '';
+    console.log(`[explain-metric] Success: ${metricName}, response length: ${text.length}`);
     return res.status(200).json({ explanation: text });
   } catch (error: any) {
-    console.error('Explain metric error:', error?.message || error);
-    return res.status(500).json({ error: 'Service temporarily unavailable' });
+    const statusCode = error?.status || error?.statusCode || 500;
+    const message = error?.message || 'Unknown error';
+    console.error(`[explain-metric] Error ${statusCode}: ${message}`);
+
+    if (statusCode === 429) {
+      return res.status(429).json({
+        error: '請求太頻繁，請稍後再試',
+        code: 'RATE_LIMIT',
+        retryAfter: 30,
+      });
+    }
+    if (statusCode === 401) {
+      return res.status(401).json({
+        error: 'API 金鑰問題，請聯繫管理員',
+        code: 'AUTH_ERROR',
+      });
+    }
+    if (message.includes('timeout') || message.includes('ETIMEDOUT')) {
+      return res.status(504).json({
+        error: '網路逾時，請檢查網路連線後重試',
+        code: 'TIMEOUT',
+      });
+    }
+    return res.status(statusCode >= 400 ? statusCode : 500).json({
+      error: message,
+      code: 'SERVER_ERROR',
+    });
   }
 }
