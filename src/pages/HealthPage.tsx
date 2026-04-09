@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Medication } from '../types';
 import { mockMedications, mockAdherenceTrend } from '../mock/data';
 import AddMedicationForm from '../components/health/AddMedicationForm';
+import HealthCheckSection from '../components/health/HealthCheckSection';
 
 type SubTab = 'medication' | 'supplements' | 'education';
 
@@ -42,7 +43,7 @@ export default function HealthPage() {
           {([
             { id: 'medication' as SubTab, label: '💊 用藥', p1: true },
             { id: 'supplements' as SubTab, label: '🧴 保健', p1: false },
-            { id: 'education' as SubTab, label: '📋 衛教', p1: false },
+            { id: 'education' as SubTab, label: '📋 健檢', p1: true },
           ]).map((t) => (
             <button
               key={t.id}
@@ -220,13 +221,8 @@ export default function HealthPage() {
       )}
 
       {!showAddForm && subTab === 'education' && (
-        <div className="flex-1 flex items-center justify-center px-8">
-          <div className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-heka-purple/10 flex items-center justify-center text-2xl">📋</div>
-            <p className="text-sm text-heka-text-secondary">健康衛教</p>
-            <p className="text-xs text-gray-400 mt-1">衛教紀錄・身體追蹤・知識卡片</p>
-            <p className="text-[10px] text-heka-purple mt-2">P2 開發中</p>
-          </div>
+        <div className="px-4">
+          <HealthCheckSection />
         </div>
       )}
     </div>
