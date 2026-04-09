@@ -113,6 +113,12 @@ export default function HealthPage() {
           {/* Today's schedule */}
           <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-white/60">
             <h3 className="text-sm font-semibold text-heka-text mb-3">今日服藥時程</h3>
+            {medications.length === 0 ? (
+              <div className="text-center py-6">
+                <p className="text-sm text-heka-text-secondary">尚未加入任何藥物</p>
+                <p className="text-xs text-gray-400 mt-1">點擊上方「新增藥物」開始建立用藥清單</p>
+              </div>
+            ) : (
             <div className="space-y-2">
               {medications.map((med) =>
                 med.timeSlots.map((slot, slotIdx) => (
@@ -157,6 +163,7 @@ export default function HealthPage() {
                 ))
               )}
             </div>
+            )}
           </div>
 
           {/* Adherence trend */}

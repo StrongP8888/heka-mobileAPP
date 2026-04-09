@@ -129,7 +129,7 @@ Fields: 許可證字號, 中文品名, 英文品名, 成分, 劑型, 劑量, 適
 | Version | Date | Change | Reason | Result |
 |---------|------|--------|--------|--------|
 | V1 | 2026-04-09 | Initial prompt | — | Baseline |
-| | | | | |
+| V2 | 2026-04-09 | Add translation rule for Japanese/English/non-Chinese products | Users scan Japanese supplements — results need to display in Traditional Chinese | Pending validation |
 
 *Update this table every time you modify the prompt. This is how you track what works.*
 
@@ -190,6 +190,7 @@ If the image is NOT a supplement package, return:
 | Version | Date | Change | Reason | Result |
 |---------|------|--------|--------|--------|
 | V1 | 2026-04-09 | Initial prompt | — | Baseline |
+| V2 | 2026-04-09 | Add translation rule for Japanese/English/non-Chinese products | Users scan Japanese supplements — results need to display in Traditional Chinese | Pending validation |
 
 ---
 

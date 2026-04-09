@@ -256,47 +256,14 @@ export const allShareCards: SharePermission[] = defaultPermissions;
 
 // === 健康 Tab Mock Data ===
 
-export const mockMedications: Medication[] = [
-  {
-    id: 'med1', name: '阿斯匹靈', type: 'prescription', category: '心血管',
-    dosage: '100mg', frequency: '每日', timeSlots: ['08:00'],
-    takenToday: [true],
-    interactions: [{ conflictWith: '魚油', severity: 'medium', description: '可能增加出血風險，建議間隔 2 小時服用' }],
-  },
-  {
-    id: 'med2', name: '降血壓藥 (Amlodipine)', type: 'prescription', category: '心血管',
-    dosage: '5mg', frequency: '每日', timeSlots: ['08:00', '20:00'],
-    takenToday: [true, false],
-    interactions: [],
-  },
-  {
-    id: 'med3', name: '鈣片', type: 'supplement', category: '骨質保健',
-    dosage: '600mg', frequency: '每日', timeSlots: ['12:00'],
-    takenToday: [true],
-    interactions: [
-      { conflictWith: '降血壓藥 (Amlodipine)', severity: 'low', description: '鈣可能輕微降低藥效，間隔 2 小時即可' },
-      { conflictWith: '甲狀腺藥', severity: 'high', description: '鈣會嚴重影響甲狀腺藥吸收，必須間隔 4 小時' },
-    ],
-  },
-  {
-    id: 'med4', name: '維生素 D3', type: 'supplement', category: '骨質保健',
-    dosage: '1000IU', frequency: '每日', timeSlots: ['12:00'],
-    takenToday: [false],
-    interactions: [],
-  },
-  {
-    id: 'med5', name: '魚油 (Omega-3)', type: 'supplement', category: '心血管保健',
-    dosage: '1000mg', frequency: '每日', timeSlots: ['20:00'],
-    takenToday: [false],
-    interactions: [{ conflictWith: '阿斯匹靈', severity: 'medium', description: '可能增加出血風險，建議間隔 2 小時服用' }],
-  },
-];
+// Start with empty medication list — user adds via scan or manual entry
+export const mockMedications: Medication[] = [];
 
 export const mockMedicationProgress: MedicationProgress = {
   date: '2026-04-09',
-  scheduled: 6,
-  taken: 3,
-  hasWarnings: true,
+  scheduled: 0,
+  taken: 0,
+  hasWarnings: false,
 };
 
 export const mockAdherenceTrend = [

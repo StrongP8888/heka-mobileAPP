@@ -16,17 +16,22 @@ Rules:
 4. Dosage should include the number and unit (e.g., "500mg", "5ml").
 5. For Taiwanese drug bags (藥袋), look for: 藥品名稱, 劑量, 用法用量, 注意事項, 適應症, 副作用.
 6. Return confidence level (high/medium/low) for each field.
+7. IMPORTANT — Translation rule: If the product text is in Japanese, English, or any non-Chinese language:
+   - Still extract all information accurately from the original language
+   - But TRANSLATE these fields to Traditional Chinese (繁體中文): drugName.zh, indication.value, sideEffects.value, frequency.value
+   - Keep the original language name in drugName.en
+   - Example: Japanese "ロキソニン" → drugName.zh: "洛索洛芬", drugName.en: "Loxoprofen (ロキソニン)"
 
 Return ONLY valid JSON, no other text:
 {
   "recognized": true,
   "scene": "medication",
   "type": "prescription" or "otc" or "unknown",
-  "drugName": { "zh": "中文藥名", "en": "English name", "value": "中文藥名", "confidence": "high" },
+  "drugName": { "zh": "中文藥名（翻譯成繁體中文）", "en": "English/original name", "value": "中文藥名", "confidence": "high" },
   "dosage": { "value": "劑量", "confidence": "high" },
-  "frequency": { "value": "用法用量", "confidence": "high" },
-  "indication": { "value": "適應症", "confidence": "medium" },
-  "sideEffects": { "value": "副作用/注意事項", "confidence": "low" },
+  "frequency": { "value": "用法用量（繁體中文）", "confidence": "high" },
+  "indication": { "value": "適應症（繁體中文）", "confidence": "medium" },
+  "sideEffects": { "value": "副作用（繁體中文）", "confidence": "low" },
   "overallConfidence": "high" or "medium" or "low"
 }
 
@@ -43,18 +48,28 @@ Rules:
 3. Look for: product name, brand, key ingredients, recommended dosage, health claims.
 4. For Taiwanese products, look for: 品名, 品牌, 主要成分, 建議用量, 保健功效.
 5. Return confidence level for each field.
+6. IMPORTANT — Translation rule: If the product text is in Japanese, English, or any non-Chinese language:
+   - Still extract all information accurately from the original language
+   - But TRANSLATE the following fields to Traditional Chinese (繁體中文):
+     - productName.zh → Chinese translation of product name
+     - keyIngredients[].name → Chinese ingredient names
+     - healthClaims → Chinese health benefit descriptions
+   - Keep the original language product name in productName.en
+   - Example: Japanese "Q&P コンドロイザーα" → productName.zh: "Q&P 軟骨素α", productName.en: "Q&P コンドロイザーα"
+   - Example: ingredient "コンドロイチン" → name: "軟骨素"
+   - Example: healthClaim "ツライひざなどの関節痛に効く" → "有效緩解膝蓋等關節疼痛"
 
 Return ONLY valid JSON:
 {
   "recognized": true,
   "scene": "supplement",
-  "productName": { "zh": "中文品名", "en": "English name", "value": "中文品名", "confidence": "high" },
+  "productName": { "zh": "中文品名（繁體中文翻譯）", "en": "原文品名", "value": "中文品名", "confidence": "high" },
   "brand": { "value": "品牌", "confidence": "high" },
   "keyIngredients": [
-    { "name": "成分名稱", "amount": "含量", "confidence": "medium" }
+    { "name": "成分名稱（繁體中文）", "amount": "含量", "confidence": "medium" }
   ],
-  "recommendedDosage": { "value": "建議用量", "confidence": "high" },
-  "healthClaims": ["功效1", "功效2"],
+  "recommendedDosage": { "value": "建議用量（繁體中文）", "confidence": "high" },
+  "healthClaims": ["功效1（繁體中文）", "功效2（繁體中文）"],
   "overallConfidence": "high" or "medium" or "low"
 }
 
