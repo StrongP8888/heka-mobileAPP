@@ -4,6 +4,7 @@ export interface Elder {
   age: number;
   avatar?: string;
   deviceStatus: 'online' | 'offline';
+  lastActiveAt?: string;
 }
 
 export interface DailySummary {
@@ -39,6 +40,34 @@ export interface ActivityData {
   weeklyTrend: { date: string; minutes: number }[];
 }
 
+// === Health Tab ===
+
+export interface Medication {
+  id: string;
+  name: string;
+  brandName?: string;
+  type: 'prescription' | 'supplement';
+  category: string;
+  dosage: string;
+  frequency: '每日' | '週期' | '需要時' | '訓練日';
+  timeSlots: string[];
+  takenToday: boolean[];  // parallel to timeSlots
+  interactions: {
+    conflictWith: string;
+    severity: 'high' | 'medium' | 'low';
+    description: string;
+  }[];
+}
+
+export interface MedicationProgress {
+  date: string;
+  scheduled: number;
+  taken: number;
+  hasWarnings: boolean;
+}
+
+// === Contact Tab ===
+
 export interface Reminder {
   id: string;
   category: '生活健康' | '日常娛樂' | '關懷互動' | '貼心提醒';
@@ -51,7 +80,10 @@ export interface Reminder {
   pinned: boolean;
   notifyOnNoResponse: boolean;
   showSender: boolean;
+  linkedMedicationId?: string;
 }
+
+// === Home Analysis ===
 
 export interface ConversationRecord {
   id: string;
@@ -61,6 +93,7 @@ export interface ConversationRecord {
   summary: string;
   duration: number;
   emotionLabel: 'happy' | 'neutral' | 'sad';
+  symptoms?: string[];
 }
 
 export interface GameScore {
@@ -80,6 +113,8 @@ export interface RoleSchedule {
   slots: RoleScheduleSlot[];
 }
 
+// === More Tab ===
+
 export interface Caregiver {
   id: string;
   name: string;
@@ -97,4 +132,14 @@ export interface SharePermission {
   enabled: boolean;
 }
 
-export type TabId = 'summary' | 'share' | 'analysis' | 'reminders' | 'browse';
+// === AI Assistant ===
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
+
+// V04 Tab IDs
+export type TabId = 'home' | 'health' | 'assistant' | 'contact' | 'more';

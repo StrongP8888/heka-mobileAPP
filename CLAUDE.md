@@ -1,201 +1,304 @@
-# HEKA WebApp — Claude Code 專案指引
+# HEKA Mobile APP — Project Guide for Claude Code
 
-## 你是誰、你要做什麼
+## Project Overview
 
-你是智腦生醫科技的 WebApp 開發工程師。你的任務是開發「家賀康 HEKA 智慧照護關懷系統」的 WebApp 版本，取代目前用 Unity 製作的手機端 APP。
+**Product:** HEKA (家賀康) Smart Care Companion System — Mobile APP
+**Company:** ZhiNao BioMedical Technology Co., Ltd. (智腦生醫科技), Kaohsiung, Taiwan
+**CEO:** Peter Liao (廖翊翔)
 
-HEKA 是一個 AI 電子寵物長照陪伴平台。核心系統運行在長輩面前的平板上（Unity 開發，已完成），長輩跟一隻 3D 虛擬寵物（企鵝）互動。你要開發的 WebApp 是給「家人」和「機構照服員」用的——他們透過手機或電腦查看長輩的互動數據、設定提醒、管理照護分工。
+HEKA is an AI virtual pet eldercare companion platform. The core system runs on a tablet in front of the elderly user (built with Unity, already complete) — the elder interacts with a 3D virtual penguin pet that provides cognitive training, rehabilitation exercises, and emotional companionship.
 
-**核心標語：「讓被照顧者，成為照顧者」**
-長輩在照顧虛擬寵物的過程中，不知不覺完成認知訓練、復健運動、健康衛教。
+**This project is the mobile APP** — used by **family members** and **institutional caregivers** to monitor the elder's interaction data, manage health, set up communications, and talk to an AI assistant. The elder does NOT use this app; they use the tablet.
+
+**Core tagline: "Let the cared-for become the caregiver."**
+Elders unknowingly complete cognitive training, rehabilitation, and health education while caring for their virtual pet.
 
 ---
 
-## 系統全貌（三端一雲）
+## System Architecture (Three Endpoints + Cloud)
 
 ```
-┌─────────────────┐     ┌──────────────┐     ┌──────────────────┐
-│   平板端 (Unity)  │     │   雲端 API    │     │  WebApp (你做的)   │
-│   長輩直接使用     │ ──→ │  JSON + 二進位 │ ──→ │  家人/機構使用      │
-│                  │     │              │     │                   │
-│ • AI 寵物對話     │     │ • 資料儲存     │     │ • 摘要 Dashboard   │
-│ • 認知訓練遊戲    │     │ • AI 分析     │     │ • 照護者分享       │
-│ • 骨架偵測復健    │     │ • 推播通知     │     │ • AI 分析報告      │
-│ • 語音互動       │     │              │     │ • 提醒/溝通設定    │
-└─────────────────┘     └──────────────┘     └──────────────────┘
+┌──────────────────┐     ┌───────────────┐     ┌───────────────────┐
+│  Tablet (Unity)   │     │   Cloud API   │     │ Mobile APP (yours) │
+│  Elder uses this  │ ──→ │  JSON + binary│ ──→ │ Family/staff uses  │
+│                   │     │               │     │                    │
+│ • AI pet dialogue │     │ • Data storage│     │ • Home dashboard   │
+│ • Cognitive games │     │ • AI analysis │     │ • Health management│
+│ • Skeleton rehab  │     │ • Push notifs │     │ • AI assistant     │
+│ • Voice interact  │     │               │     │ • Contact (remind) │
+└──────────────────┘     └───────────────┘     └───────────────────┘
 ```
 
-**現有 API 格式：** JSON + 二進位（binary），由後端工程師廖品全維護。
-**WebApp 開發階段先用 mock data 建 UI prototype**，後續再串接實際 API。
+**Existing API format:** JSON + binary, maintained by backend engineer.
+**Current dev phase: Use mock data for UI prototype.** No real API integration yet.
 
 ---
 
-## 平板端功能概述（你不開發這些，但你需要理解它們產出什麼數據）
+## AI Pet Expert Roles (Run on tablet, data shown in mobile APP)
 
-平板端是長輩每天面對的介面，上面跑著一隻 3D AI 企鵝寵物。寵物會以三種「專家角色」切換運作：
+The AI penguin pet operates in three expert personas, switched by schedule or context:
 
-### 角色 1：開心夥伴（情緒關懷 + 社交互動）
-- 講笑話、聊八卦、懷舊治療引導、猜謎、唱歌
-- 不做心理諮商，做的是「一隻有趣的寵物朋友」
-- 目標：讓長輩每天願意打開平板
-- **產出數據：** 對話文字紀錄、音檔、情緒標籤、互動時長
+### Role 1: Happy Buddy (開心夥伴) — Emotional & Social
+- Tells jokes, chats about daily life, reminiscence therapy, riddles, singing
+- Goal: Make the elder want to open the tablet every day
+- NOT therapy — it's "a fun penguin friend"
+- **Output data:** Conversation text, audio files, emotion labels, session duration
 
-### 角色 2：認知教練（認知訓練引導 + 衛教）
-- 認知遊戲的「前後包裝」——遊戲前暖身解說，遊戲後鼓勵 + 帶入衛教
-- 可根據醫囑調整今日遊戲重點
-- 平板端已有 6 款認知遊戲（基於 CASI 認知評估框架）
-- 每款遊戲有 4 種模式：Tutorial（不限時教學）、Easy、Medium、Hard
-- **產出數據：** 遊戲分數（各維度）、課程完成度、對話中的症狀自述
+### Role 2: Cognitive Coach (認知教練) — Training & Education
+- Wraps cognitive games with warm-up dialogue and post-game encouragement + health education
+- Can adjust game focus based on doctor's orders
+- 6 cognitive games based on CASI assessment framework, 4 difficulty modes each (Tutorial/Easy/Medium/Hard)
+- **Output data:** Game scores (per CASI dimension), course completion rate, health education completion, symptom mentions from dialogue
 
-### 角色 3：復健教練（運動帶操 + 骨架偵測）
-- 語音引導復健動作，搭配骨架偵測即時判斷正確性
-- 骨架偵測功能即將上線
-- **產出數據：** 運動完成度、動作正確率、活動時長
-
-### 平板端其他功能
-- 提醒接收：WebApp 端設定的提醒，會由 AI 寵物以自然對話方式傳達給長輩
-- 相簿顯示：家人從 WebApp 傳的照片，會在平板端展示
-- 感測器連接：門窗感測器、動作感測器（IoT）
-- 血壓機數據：有介面但目前無實際硬體連接
+### Role 3: Rehab Coach (復健教練) — Exercise & Skeleton Detection
+- Voice-guided rehabilitation exercises with real-time skeleton detection feedback (coming soon)
+- **Output data:** Exercise completion rate, movement accuracy, activity duration
 
 ---
 
-## 現有手機 APP 截圖說明（附件）
+## APP Tab Architecture (V04 — Final)
 
-現有 APP 用 Unity 開發，以下是各畫面的功能說明：
+### Bottom Navigation (5 tabs)
 
-### 封面 / 啟動頁
-- 標題：「家賀康 HEKA 智慧照護關懷系統」
-- 副標題：「有溫度的 AI，讓陪伴變得更簡單」
-- 吉祥物：3D 企鵝角色
-- APP 版標示
-
-### 底部導航結構（5 個 Tab）
-1. **摘要**（♡ 圖示）— 目前顯示「敬請期待」，要做成 Apple Health 式 Dashboard
-2. **分享**（👥 圖示）— 目前顯示「敬請期待」，要做成照護者數據分享
-3. **中央浮動按鈕**（✦ 圖示）— AI 分析入口，帶有漸層圓形按鈕設計
-4. **提醒**（🔔 圖示）— 已完成，功能完整
-5. **瀏覽**（🖥 圖示）— 包含相簿、感測器、血壓機、帳號設定
-
-### 提醒功能（已完成，遷移到 WebApp）
-- **提醒列表頁**：按分類顯示（生活健康 / 日常娛樂 / 關懷互動 / 貼心提醒）
-- 每條提醒顯示：時間、重複規則、開關 toggle、釘選
-- **新增提醒頁**：
-  - 類別：下拉選單
-  - 日期 / 時間選擇器
-  - 重複：不重複 / 每天 / 自訂
-  - 模式：AI / 訊息（左右 toggle 切換）
-  - 主題：健康關懷等下拉選單
-  - 未回應通知：開關
-  - 顯示設定者：開關
-
-### 瀏覽功能
-- **相簿**：相簿分類（Test01, Test02...）+ 照片牆（grid layout）
-- **感測器**：
-  - 門窗感測器：ON/OFF 狀態 + 電量
-  - 動作感測器：觸發時間 + 電量
-- **血壓機（生命徵象）**：高壓/低壓/脈搏數值顯示 + 測量時間
-- **帳號設定**：語言切換（繁體中文）+ 登出按鈕
-
-### AI 分析功能
-- 標題：「AI 分析」
-- Emotional curve 圖表（Happy 趨勢線，1 day 時間軸）
-- 預設提問按鈕：「長輩最近談話關鍵字」「長輩的睡眠狀況」「長輩最近在想什麼」
-- 底部：文字輸入框 + 語音輸入按鈕
-
-### 後台管理端
-- 機構端有管理後台，可管理多位住民的數據
-- 後台 API 同樣使用 JSON + 二進位格式
+| Tab | Chinese | English | One-line definition |
+|-----|---------|---------|-------------------|
+| 1 | 首頁 | Home | "How is grandma doing today?" |
+| 2 | 健康 | Health | "Manage grandma's health" |
+| 3 | AI 助手 | AI Assistant | "I have a question" (center floating button) |
+| 4 | 聯繫 | Contact | "Talk to grandma" |
+| 5 | 更多 | More | "Settings & management" |
 
 ---
 
-## WebApp 設計規範
+### Tab 1 — Home (Dashboard — merged Summary + AI Analysis)
 
-### 視覺風格
-- **背景：** 淺藍綠 → 淡紫色漸層（延續現有 APP 風格）
-- **主色調：** 紫色系（#7C3AED 為主 accent）
-- **卡片：** 白色圓角卡片 + 淺灰邊框
-- **底部導航：** 白色圓弧底欄 + 中央浮動圓形按鈕
-- **整體調性：** 柔和、溫暖、不冰冷的科技感。這是給長輩的家人用的，不是給工程師用的
-- **字體：** 繁體中文為主
-- **設計品質標準：** 高標準，追求專業感而非「安全模板」
+Single scrollable page showing all elder status. Important info at top, detailed analysis below. Inspired by Apple Health summary page.
 
-### 響應式設計
-- 必須適配手機（375px）和平板（768px+）
-- 優先設計手機版，平板版自適應
+**Top section — Today's Snapshot (P1):**
+- **Daily conversation summary** — AI-generated 2-3 sentence summary of what the elder talked about today
+- **Emotion status** — Combined text + voice emotion analysis, today's curve + 7-day trend
+- **Interaction activity** — Today's session count + total duration + 7-day mini trend bars
+- **Course progress** — Ring progress chart (scheduled vs completed)
+- **Medication progress** — Small ring "3/5 taken" + interaction warning badge if conflicts exist
 
-### 不要做的事
-- 不需要 AI 寵物的 3D 渲染（寵物在平板端）
-- 不要設計長輩操作的介面（長輩用平板端）
-- 不要串接真實 API（先用 mock data）
+**Middle section — Deep Analysis (P1):**
+- **Emotion curve (full)** — Switchable 1-day / 7-day / 30-day view
+- **Conversation log** — Filterable by role (Happy Buddy / Cognitive Coach / Rehab Coach) + timeline view
 
----
-
-## 開發優先級
-
-### Phase 1（P1 — 先做這些）
-1. **摘要頁**：4 張數據卡片（今日對話摘要、情緒狀態、互動活躍度、今日課程進度）
-2. **提醒頁**：遷移現有功能（提醒列表 + 新增提醒表單）
-3. **AI 分析頁**：情緒曲線 + 遊戲成績 + 角色排程
-4. **瀏覽頁**：相簿 + 帳號設定
-
-### Phase 2（P2 — 接著做）
-5. **分享頁**：邀請照顧者 + 數據權限管理
-6. 摘要頁新增卡片：認知雷達圖、關鍵字雲、症狀追蹤
-7. 異常推播通知
-8. 復健運動報告
-
-### Phase 3（P3 — 未來）
-9. 照護報告匯出 PDF
-10. 認知語言指標
-11. 語音健康指標追蹤
+**Bottom section — Advanced Data (P2):**
+- **CASI cognitive radar chart** — 6-dimension scores mapped to games
+- **Game score trends** — Line charts per game
+- **Role schedule manager** — Weekly calendar + time slot assignment
+- **Keyword cloud** — Most mentioned words in past 7 days
+- **Symptom tracking** — AI-extracted health mentions from dialogue ("knee pain", "no appetite"), shown as timeline
 
 ---
 
-## Mock Data 結構建議
+### Tab 2 — Health (Medication + Supplements + Education)
 
-開發 UI 時使用以下 mock data 結構，未來接 API 時直接替換：
+Three sub-tabs: 💊 Medication / 🧴 Supplements / 📋 Education
+
+**💊 Medication (P1):**
+- Prescription drug list — Build elder's current medication list
+- Today's medication schedule — What to take, when, taken or not
+- **Drug interaction checker** — Auto-scan medication vs supplement conflicts, red warnings (critical feature for medical partnerships)
+- Adherence trend chart (weekly/monthly)
+- Medication expiry / follow-up appointment reminders
+
+**🧴 Supplements (P2):**
+- Supplement item management — Elder's current supplement list
+- AI scan recognition — Photo supplement packaging, AI auto-identifies and creates entry (SuppleMate technology)
+- Knowledge base search — Search by name or effect
+- Situational recommendations — Hangover recovery, sleep improvement, etc.
+
+**📋 Education (P2):**
+- AI pet education log — What health knowledge was taught today
+- Body status tracking — Energy / sleep / digestion trends
+- Health knowledge cards — Elder-appropriate educational content
+
+**Technical note:** The Health tab integrates technology from SuppleMate (supplementmate.vercel.app), a separate supplement tracking app by the same team. The drug interaction engine and supplement knowledge base are reused here.
+
+---
+
+### Tab 3 — AI Assistant (Center Floating Button)
+
+Conversational AI interface. Family/caregivers ask questions directly.
+
+**P1:**
+- Text + voice input
+- Preset quick questions: "How is grandma today?", "Is she in a good mood?", "Did she take her medicine?"
+- Smart summary push: "Today's highlight: Grandma mentioned knee pain, suggest follow-up"
+
+**P2:**
+- Action commands: "Set a medication reminder for tomorrow 3 PM"
+- Drug queries: "Does grandma's calcium conflict with her blood pressure medication?"
+- Voice conversation mode
+
+---
+
+### Tab 4 — Contact (Reminders + Media Sending)
+
+Two sub-tabs: 📋 Reminders / 📸 Send
+
+The concept is **"electronic answering machine"** — family/staff set messages, AI pet delivers them to the elder in natural conversation.
+
+**📋 Reminders (P1):**
+- Reminder list — Categorized (Daily Health / Entertainment / Care / Personal)
+- **AI mode** — AI pet delivers reminder through natural conversation
+- **Message mode** — Family records voice / types text / sends photo, AI pet relays it
+- New reminder form — Category, date, time, repeat, mode (AI/Message), topic, no-response notification, show sender toggle
+- **Auto-linked medication reminders** — Drug schedules from Health tab automatically appear here
+
+**📸 Send (P1):**
+- Photo album — Grid view + categories + "sent by" label
+- Take/select photo — One-tap send to elder's tablet
+- Voice message — Record audio, AI pet plays it for elder
+- Video sending
+
+**P2:**
+- Good morning images / Holiday greetings — Template selection + custom text, scheduled delivery
+
+---
+
+### Tab 5 — More
+
+- **Share management** — Invite caregivers (family/staff/doctor), set data visibility permissions per person
+- Account settings — Profile, language switch (Traditional Chinese), logout
+- Linked elder — Tablet connection status, device ID, last activity time
+- Device management — Sensor pairing (door/motion sensors)
+- Notification settings — Push preferences, anomaly alert toggles
+- **Install to home screen** — PWA installation guide button
+- About HEKA
+
+---
+
+## Data Flow
+
+```
+Tablet (Elder uses)
+  AI pet conversations (3 roles) + cognitive games + skeleton detection
+       ↓
+  Conversation text + audio files + game scores + skeleton data
+       ↓
+Cloud Analysis Layer
+  LLM summarization / emotion analysis / voice feature extraction / CASI mapping / drug interaction check
+       ↓
+  Structured data + analysis results
+       ↓
+Mobile APP (Family/staff uses)
+  Home dashboard + Health management + AI assistant + Contact
+```
+
+---
+
+## Design Specifications
+
+### Visual Style
+- **Background:** Light teal → light purple gradient (consistent with existing app)
+- **Accent color:** Purple (#7C3AED primary)
+- **Cards:** White with rounded corners + very subtle box-shadow
+- **Bottom nav:** White curved bar + center floating circular button (purple→teal gradient)
+- **Overall tone:** Warm, approachable, humane technology — NOT cold/clinical
+- **Typography:** Traditional Chinese (繁體中文)
+- **Transitions:** All interactions must have 200-300ms ease transitions
+- **Quality bar:** High — founder's design idol is Palmer Luckey (Anduril). No generic templates.
+
+### Responsive
+- Mobile-first (375px), tablet auto-adapt
+- Desktop: max-width: 480px + margin: 0 auto (constrain to phone-like experience)
+
+### Do NOT
+- Do NOT render AI pet 3D — pet lives on the tablet
+- Do NOT design elder-facing interfaces — elders use the tablet
+- Do NOT connect to real APIs — use mock data for now
+- Do NOT use dark theme — the app uses light theme with gradient background
+
+---
+
+## Development Priority
+
+### Phase 1 (Build first)
+1. **Home** — Top section (5 summary cards) + middle section (emotion curve + conversation log)
+2. **Contact** — Reminders (migrate existing functionality) + Send (album + photo capture)
+3. **Health** — Medication (drug list + schedule + interaction checker)
+4. **More** — Account settings + share management
+5. **Bottom navigation** — 5 tabs with center floating button
+
+### Phase 2 (Then)
+6. **AI Assistant** — Conversational AI interface
+7. **Health** — Supplements + Education sub-tabs
+8. **Home** — Bottom section (radar chart + schedule + keyword cloud)
+9. **Contact** — Good morning templates / holiday greetings
+
+### Phase 3 (Future)
+10. AI Assistant — Action commands + drug queries
+11. Care report PDF export
+12. Cognitive language indicators / voice health tracking
+
+---
+
+## Mock Data Types
 
 ```typescript
-// 長輩資料
 interface Elder {
   id: string;
-  name: string;
+  name: string;        // e.g. "王奶奶"
   age: number;
   avatar?: string;
   deviceStatus: 'online' | 'offline';
+  lastActiveAt?: string;
 }
 
-// 今日對話摘要
 interface DailySummary {
   date: string;
-  summary: string; // "今天跟小企鵝聊到想去菜市場，說膝蓋有點痠"
+  summary: string;     // "今天跟小企鵝聊到想去菜市場，說膝蓋有點痠"
   keyTopics: string[];
-  totalDuration: number; // 分鐘
+  totalDuration: number; // minutes
   sessionCount: number;
 }
 
-// 情緒狀態
 interface EmotionData {
   date: string;
   hourly: { hour: number; score: number; label: 'happy' | 'neutral' | 'sad' }[];
   weeklyTrend: { date: string; avgScore: number }[];
 }
 
-// 課程進度
 interface CourseProgress {
   date: string;
   scheduled: number;
   completed: number;
   games: {
-    name: string;
+    name: string;      // e.g. "財神金頭腦", "柴神記憶長河"
     score: number;
     difficulty: 'tutorial' | 'easy' | 'medium' | 'hard';
-    casiDimension: string; // '注意力' | '記憶力' | '語言' | '執行功能' 等
+    casiDimension: string; // '注意力' | '記憶力' | '語言' | '執行功能' | '空間感' | '定向力'
   }[];
 }
 
-// 提醒
+interface Medication {
+  id: string;
+  name: string;         // Drug or supplement name
+  brandName?: string;
+  type: 'prescription' | 'supplement';
+  category: string;     // e.g. "抗生素", "骨質疏鬆", "維生素"
+  dosage: string;
+  frequency: '每日' | '週期' | '需要時' | '訓練日';
+  timeSlots: string[];  // e.g. ["08:00", "20:00"]
+  takenToday: boolean;
+  interactions: {
+    conflictWith: string;
+    severity: 'high' | 'medium' | 'low';
+    description: string;
+  }[];
+}
+
+interface MedicationProgress {
+  date: string;
+  scheduled: number;
+  taken: number;
+  hasWarnings: boolean;
+}
+
 interface Reminder {
   id: string;
   category: '生活健康' | '日常娛樂' | '關懷互動' | '貼心提醒';
@@ -208,55 +311,118 @@ interface Reminder {
   pinned: boolean;
   notifyOnNoResponse: boolean;
   showSender: boolean;
+  linkedMedicationId?: string; // Auto-generated from Health tab
 }
 
-// 角色排程
+interface ConversationEntry {
+  id: string;
+  date: string;
+  time: string;
+  duration: number;     // minutes
+  role: '開心夥伴' | '認知教練' | '復健教練';
+  summary: string;      // e.g. "聊到以前在市場賣菜的日子，心情很好，還哼了一首歌"
+  emotionLabel: 'happy' | 'neutral' | 'sad';
+  symptoms?: string[];  // e.g. ["膝蓋痠", "沒胃口"]
+}
+
 interface RoleSchedule {
-  dayOfWeek: number; // 0-6
+  dayOfWeek: number;    // 0=Sunday, 1=Monday...
   slots: {
     startTime: string;
     endTime: string;
     role: '開心夥伴' | '認知教練' | '復健教練';
   }[];
 }
+
+interface PhotoAlbum {
+  id: string;
+  name: string;         // e.g. "全家福", "日常生活"
+  photoCount: number;
+}
+
+interface Photo {
+  id: string;
+  albumId: string;
+  url: string;
+  sentBy: string;       // e.g. "女兒 小明", "照服員 小華"
+  sentAt: string;
+  caption?: string;
+}
+
+interface CaregiverShare {
+  id: string;
+  name: string;
+  role: '家人' | '照服員' | '醫師';
+  email: string;
+  status: 'active' | 'pending';
+  visibleDataCount: number;
+}
 ```
 
 ---
 
-## 專案結構建議
+## Project Structure
 
 ```
 heka-mobileAPP/
-├── CLAUDE.md              ← 你正在讀的這份文件
+├── CLAUDE.md                          ← This file (project guide)
+├── docs/
+│   ├── HEKA_WEBAPP_PROJECT_BRIEF.md   ← Supplementary specs
+│   ├── HEKA_MobileApp_V02.pdf         ← Current WebApp V02 screenshots
+│   ├── HEKA_Tablet_Backend.pdf        ← Tablet + admin backend
+│   └── SuppleMate_App.pdf             ← Supplement tracking app reference
 ├── public/
 ├── src/
 │   ├── components/
-│   │   ├── layout/        ← 底部導航、頁面殼
-│   │   ├── cards/         ← 摘要頁的各種數據卡片
-│   │   ├── charts/        ← 圖表元件（情緒曲線、雷達圖等）
-│   │   ├── reminders/     ← 提醒相關元件
-│   │   ├── analysis/      ← AI 分析頁元件
-│   │   └── shared/        ← 通用元件（按鈕、卡片殼、toggle 等）
+│   │   ├── layout/        ← Bottom nav, page shell, tab container
+│   │   ├── cards/         ← Home page summary cards
+│   │   ├── charts/        ← Charts (emotion curve, radar, trends)
+│   │   ├── health/        ← Health tab (medication/supplements/education)
+│   │   ├── contact/       ← Contact tab (reminders/send)
+│   │   ├── assistant/     ← AI assistant chat interface
+│   │   └── shared/        ← Common components (buttons, toggles, etc.)
 │   ├── pages/
-│   │   ├── SummaryPage    ← Tab 1 摘要
-│   │   ├── SharePage      ← Tab 2 分享
-│   │   ├── AnalysisPage   ← Tab 3 AI 分析
-│   │   ├── RemindersPage  ← Tab 4 提醒
-│   │   └── BrowsePage     ← Tab 5 瀏覽
-│   ├── mock/              ← Mock data
-│   ├── hooks/             ← Custom hooks
-│   ├── types/             ← TypeScript 型別定義
-│   └── styles/            ← 全域樣式、主題色
+│   │   ├── HomePage.tsx       ← Tab 1
+│   │   ├── HealthPage.tsx     ← Tab 2
+│   │   ├── AssistantPage.tsx  ← Tab 3
+│   │   ├── ContactPage.tsx    ← Tab 4
+│   │   └── MorePage.tsx       ← Tab 5
+│   ├── mock/              ← Mock data files
+│   ├── hooks/
+│   ├── types/             ← TypeScript type definitions
+│   └── styles/            ← Global styles, theme colors
 ├── package.json
 └── tsconfig.json
 ```
 
 ---
 
-## 關鍵提醒
+## Existing V02 Progress (What's already built)
 
-1. 這是一個**有溫度的照護產品**，不是冰冷的管理系統。UI 語氣要溫暖。
-2. 使用者可能是 50 歲以上的子女或 30 歲的照服員，**操作要直覺**。
-3. 摘要頁是 WebApp 的靈魂——使用者打開 APP 第一眼要能回答：「我爸/媽今天過得怎麼樣？」
-4. 提醒頁的「AI 模式 / 訊息模式」切換是核心互動，要做得順手。
-5. 設計品質標準高，創辦人 Peter 的設計偶像是 Palmer Luckey（Anduril），不接受「安全模板」。
+The following pages exist from V02 and need to be **restructured** into the V04 tab architecture:
+
+- ✅ Share page (caregivers + permissions) → Move to **More** tab
+- ✅ AI Analysis — Emotion tab (curve chart) → Move to **Home** middle section
+- ✅ AI Analysis — Conversation tab (role filter + timeline) → Move to **Home** middle section
+- ✅ AI Analysis — Game tab (CASI radar + trends) → Move to **Home** bottom section
+- ✅ AI Analysis — Schedule tab (weekly role calendar) → Move to **Home** bottom section
+- ✅ Reminders — List + new form (AI/message dual mode) → Keep in **Contact** tab
+- ✅ Browse — Album (photo grid + categories) → Move to **Contact > Send** sub-tab
+- ✅ Browse — Account settings → Move to **More** tab
+- ✅ Browse — Blood pressure (vital signs) → Move to **Health** tab
+- ❌ Home page — NOT YET BUILT (highest priority)
+- ❌ Health tab — NOT YET BUILT
+- ❌ AI Assistant — NOT YET BUILT
+
+---
+
+## Critical Reminders
+
+1. This is a **warm, humane care product**, not a cold management dashboard. UI copy should feel caring.
+2. Users are 50-year-old children or 30-year-old caregivers — **interactions must be intuitive**.
+3. Home page is the soul — opening the app must instantly answer: "How is grandma doing today?"
+4. The drug interaction checker in Health tab is the **key selling point** for medical partnerships (e.g., with Dr. Wang Yu-Jun at Kaohsiung Veterans General Hospital).
+5. Contact tab unifies all elder communication — reminders, photos, voice messages — in one place.
+6. AI Assistant is the **universal entry point** — don't know where a feature is? Ask the assistant.
+7. All UI text should be in **Traditional Chinese** (繁體中文).
+8. Design quality must be exceptionally high — no generic templates accepted.
