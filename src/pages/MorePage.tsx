@@ -5,14 +5,19 @@ import CaregiverCard from '../components/share/CaregiverCard';
 import InviteForm from '../components/share/InviteForm';
 import PermissionEditor from '../components/share/PermissionEditor';
 import AccountSettings from '../components/browse/AccountSettings';
+import InstallGuide from '../components/shared/InstallGuide';
 
-type View = 'menu' | 'share' | 'invite' | 'permissions' | 'account';
+type View = 'menu' | 'share' | 'invite' | 'permissions' | 'account' | 'install';
 
 export default function MorePage() {
   const [view, setView] = useState<View>('menu');
   const [caregivers, setCaregivers] = useState<Caregiver[]>(mockCaregivers);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [removeConfirmId, setRemoveConfirmId] = useState<string | null>(null);
+
+  if (view === 'install') {
+    return <InstallGuide onBack={() => setView('menu')} />;
+  }
 
   if (view === 'account') {
     return (
@@ -150,7 +155,7 @@ export default function MorePage() {
         <MenuItem icon="🐧" label="連結的長輩" sublabel="王奶奶 ・ 平板在線" />
         <MenuItem icon="📡" label="裝置管理" sublabel="感測器配對" badge="P2" />
         <MenuItem icon="🔔" label="通知設定" sublabel="推播偏好・異常警示" badge="P2" />
-        <MenuItem icon="📲" label="安裝到主畫面" sublabel="像原生 APP 一樣使用" badge="PWA" />
+        <MenuItem icon="📲" label="安裝到主畫面" sublabel="像原生 APP 一樣使用" badge="PWA" onClick={() => setView('install')} />
         <MenuItem icon="ℹ️" label="關於 HEKA" sublabel="v1.0.0 — 智腦生醫科技" />
       </div>
     </div>
