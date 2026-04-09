@@ -6,6 +6,7 @@ import CourseProgressCard from '../components/cards/CourseProgressCard';
 import MedicationProgressCard from '../components/cards/MedicationProgressCard';
 import EmotionSection from '../components/analysis/EmotionSection';
 import ConversationList from '../components/analysis/ConversationList';
+import InstallBanner from '../components/shared/InstallBanner';
 
 export default function HomePage() {
   return (
@@ -37,6 +38,9 @@ export default function HomePage() {
           </span>
         </div>
       </div>
+
+      {/* Install PWA banner */}
+      <InstallBanner />
 
       {/* === Top: Today's Snapshot (5 cards) === */}
       <div className="px-4">
