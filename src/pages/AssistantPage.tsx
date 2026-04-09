@@ -58,7 +58,12 @@ interface MessageWithFollowUps extends ChatMessage {
   followUps?: string[];
 }
 
-export default function AssistantPage() {
+interface Props {
+  prefillMessage?: string;
+  onPrefillConsumed?: () => void;
+}
+
+export default function AssistantPage({ prefillMessage, onPrefillConsumed }: Props) {
   const [messages, setMessages] = useState<MessageWithFollowUps[]>([
     {
       id: 'welcome',
@@ -70,10 +75,24 @@ export default function AssistantPage() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const prefillHandled = useRef(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
+
+  // Handle prefill from other tabs (e.g., Health Check → "問 AI 助手")
+  useEffect(() => {
+    if (prefillMessage && !prefillHandled.current) {
+      prefillHandled.current = true;
+      // Small delay to let the page render first
+      setTimeout(() => {
+        sendMessage(prefillMessage);
+        onPrefillConsumed?.();
+      }, 300);
+    }
+    return () => { prefillHandled.current = false; };
+  }, [prefillMessage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sendMessage = (text: string) => {
     if (!text.trim() || isTyping) return;

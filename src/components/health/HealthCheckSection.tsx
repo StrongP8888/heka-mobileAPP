@@ -14,6 +14,13 @@ interface HealthMetric {
   history: { date: string; value: number }[];
 }
 
+interface ExplainState {
+  metricId: string;
+  loading: boolean;
+  text: string | null;
+  error: boolean;
+}
+
 const initialMetrics: HealthMetric[] = [
   // Blood Sugar
   { id: 'fasting-glucose', name: '空腹血糖', unit: 'mg/dL', category: '血糖',
@@ -78,7 +85,11 @@ function getStatus(value: number, range: { min: number; max: number }): { label:
 
 const categories = ['全部', '血壓', '血糖', '膽固醇', '肝功能', '腎功能', '血液', '糖化血色素', '體態'];
 
-export default function HealthCheckSection() {
+interface Props {
+  onAskAssistant?: (prefill: string) => void;
+}
+
+export default function HealthCheckSection({ onAskAssistant }: Props) {
   const [metrics, setMetrics] = useState(initialMetrics);
   const [filter, setFilter] = useState('全部');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -87,8 +98,54 @@ export default function HealthCheckSection() {
   const [scanLoading, setScanLoading] = useState(false);
   const [recognitionResult, setRecognitionResult] = useState<RecognitionResult | null>(null);
   const [capturedImageUrl, setCapturedImageUrl] = useState<string | undefined>();
+  const [explain, setExplain] = useState<ExplainState | null>(null);
+  const explainCache = useRef<Record<string, string>>({});
   const scanCameraRef = useRef<HTMLInputElement>(null);
   const scanAlbumRef = useRef<HTMLInputElement>(null);
+
+  const requestExplain = async (m: HealthMetric) => {
+    const cacheKey = `${m.id}-${m.value}`;
+    if (explainCache.current[cacheKey]) {
+      setExplain({ metricId: m.id, loading: false, text: explainCache.current[cacheKey], error: false });
+      return;
+    }
+    setExplain({ metricId: m.id, loading: true, text: null, error: false });
+
+    // Gather related metrics from the same category
+    const related = metrics
+      .filter((rm) => rm.category === m.category && rm.id !== m.id && rm.value !== null)
+      .map((rm) => ({
+        name: rm.name,
+        value: rm.value,
+        unit: rm.unit,
+        status: getStatus(rm.value!, rm.normalRange).label === '正常' ? 'normal' : getStatus(rm.value!, rm.normalRange).label === '偏高' ? 'high' : 'low',
+      }));
+
+    try {
+      const res = await fetch('/api/explain-metric', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          metricName: m.name,
+          value: m.value,
+          unit: m.unit,
+          normalRange: m.normalRange,
+          status: getStatus(m.value!, m.normalRange).label === '正常' ? 'normal' : getStatus(m.value!, m.normalRange).label === '偏高' ? 'high' : 'low',
+          elderAge: 78,
+          relatedMetrics: related,
+        }),
+      });
+      const data = await res.json();
+      if (data.explanation) {
+        explainCache.current[cacheKey] = data.explanation;
+        setExplain({ metricId: m.id, loading: false, text: data.explanation, error: false });
+      } else {
+        setExplain({ metricId: m.id, loading: false, text: null, error: true });
+      }
+    } catch {
+      setExplain({ metricId: m.id, loading: false, text: null, error: true });
+    }
+  };
 
   const handleScanFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -298,12 +355,20 @@ export default function HealthCheckSection() {
                 </button>
               </div>
             ) : (
-              <button
-                onClick={() => startEdit(m)}
-                className="mt-2 w-full py-2 rounded-xl bg-gray-50 text-xs text-heka-text-secondary font-medium cursor-pointer hover:bg-heka-purple/5 hover:text-heka-purple transition-colors"
-              >
-                更新數值
-              </button>
+              <div className="mt-2 flex gap-2">
+                <button
+                  onClick={() => startEdit(m)}
+                  className="flex-1 py-2 rounded-xl bg-gray-50 text-xs text-heka-text-secondary font-medium cursor-pointer hover:bg-heka-purple/5 hover:text-heka-purple transition-colors"
+                >
+                  更新數值
+                </button>
+                <button
+                  onClick={() => requestExplain(m)}
+                  className="flex-1 py-2 rounded-xl bg-heka-purple/8 text-xs text-heka-purple font-medium cursor-pointer hover:bg-heka-purple/15 transition-colors"
+                >
+                  🤖 AI 解讀
+                </button>
+              </div>
             )}
           </div>
         );
@@ -347,6 +412,103 @@ export default function HealthCheckSection() {
           ))}
         </div>
       </div>
+      {/* AI Explanation bottom sheet */}
+      {explain && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setExplain(null)}>
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-[430px] bg-white rounded-t-3xl pb-[env(safe-area-inset-bottom,16px)] max-h-[80vh] flex flex-col animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 rounded-full bg-gray-300 mx-auto mt-3 mb-2 shrink-0" />
+
+            <div className="px-5 pb-2 shrink-0 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-heka-text">
+                🤖 AI 健檢解讀
+              </h3>
+              <button onClick={() => setExplain(null)} className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 pb-4">
+              {explain.loading && (
+                <div className="flex flex-col items-center py-8">
+                  <div className="w-12 h-12 rounded-full bg-heka-purple/10 flex items-center justify-center animate-pulse mb-3">
+                    <span className="text-xl">🤖</span>
+                  </div>
+                  <p className="text-sm text-heka-text-secondary">AI 正在分析你的數值...</p>
+                </div>
+              )}
+
+              {explain.error && (
+                <div className="text-center py-8">
+                  <p className="text-sm text-red-500 mb-2">解讀失敗</p>
+                  <button
+                    onClick={() => {
+                      const m = metrics.find((x) => x.id === explain.metricId);
+                      if (m) requestExplain(m);
+                    }}
+                    className="text-xs text-heka-purple cursor-pointer"
+                  >
+                    重試
+                  </button>
+                </div>
+              )}
+
+              {explain.text && (
+                <>
+                  {/* Metric badge */}
+                  {(() => {
+                    const m = metrics.find((x) => x.id === explain.metricId);
+                    if (!m || m.value === null) return null;
+                    const st = getStatus(m.value, m.normalRange);
+                    return (
+                      <div className="flex items-center gap-3 mb-4 bg-gray-50/80 rounded-xl px-3 py-2.5">
+                        <div>
+                          <p className="text-sm font-semibold text-heka-text">{m.name}</p>
+                          <p className="text-[10px] text-heka-text-secondary">{m.category}</p>
+                        </div>
+                        <div className="ml-auto text-right">
+                          <span className="text-lg font-bold text-heka-text">{m.value}</span>
+                          <span className="text-xs text-heka-text-secondary ml-1">{m.unit}</span>
+                          <span className={`ml-2 px-1.5 py-0.5 rounded text-[9px] font-medium ${st.color} ${st.bg}`}>{st.label}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="text-sm text-heka-text leading-relaxed whitespace-pre-line">
+                    {explain.text}
+                  </div>
+
+                  <p className="mt-4 text-[10px] text-gray-400 leading-relaxed">
+                    以上為 AI 健康知識說明，不構成醫療建議。如有疑問請諮詢醫師。
+                  </p>
+
+                  {/* Ask AI Assistant */}
+                  {onAskAssistant && (
+                    <button
+                      onClick={() => {
+                        const m = metrics.find((x) => x.id === explain.metricId);
+                        if (m) {
+                          setExplain(null);
+                          onAskAssistant(`我的健檢報告顯示${m.name} ${m.value} ${m.unit}，想了解更多`);
+                        }
+                      }}
+                      className="mt-3 w-full py-3 rounded-xl bg-heka-purple/10 text-sm font-medium text-heka-purple cursor-pointer hover:bg-heka-purple/20 transition-colors flex items-center justify-center gap-2"
+                    >
+                      💬 繼續問 AI 助手
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

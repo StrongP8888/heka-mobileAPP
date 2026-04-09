@@ -7,7 +7,11 @@ import SupplementSection from '../components/health/SupplementSection';
 
 type SubTab = 'medication' | 'supplements' | 'education';
 
-export default function HealthPage() {
+interface Props {
+  onAskAssistant?: (prefill: string) => void;
+}
+
+export default function HealthPage({ onAskAssistant }: Props) {
   const [subTab, setSubTab] = useState<SubTab>('medication');
   const [medications, setMedications] = useState<Medication[]>(mockMedications);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -228,7 +232,7 @@ export default function HealthPage() {
 
       {!showAddForm && subTab === 'education' && (
         <div className="px-4">
-          <HealthCheckSection />
+          <HealthCheckSection onAskAssistant={onAskAssistant} />
         </div>
       )}
     </div>

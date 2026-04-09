@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import type { TabId } from './types';
 import BottomNav from './components/layout/BottomNav';
 import HomePage from './pages/HomePage';
@@ -7,21 +7,26 @@ import AssistantPage from './pages/AssistantPage';
 import ContactPage from './pages/ContactPage';
 import MorePage from './pages/MorePage';
 
-const pages: Record<TabId, () => React.ReactNode> = {
-  home: HomePage,
-  health: HealthPage,
-  assistant: AssistantPage,
-  contact: ContactPage,
-  more: MorePage,
-};
-
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>('home');
-  const Page = pages[activeTab];
+  const [assistantPrefill, setAssistantPrefill] = useState<string | undefined>();
+
+  const goToAssistant = useCallback((prefill: string) => {
+    setAssistantPrefill(prefill);
+    setActiveTab('assistant');
+  }, []);
+
+  const clearPrefill = useCallback(() => {
+    setAssistantPrefill(undefined);
+  }, []);
 
   return (
     <div className="relative min-h-dvh">
-      <Page />
+      {activeTab === 'home' && <HomePage />}
+      {activeTab === 'health' && <HealthPage onAskAssistant={goToAssistant} />}
+      {activeTab === 'assistant' && <AssistantPage prefillMessage={assistantPrefill} onPrefillConsumed={clearPrefill} />}
+      {activeTab === 'contact' && <ContactPage />}
+      {activeTab === 'more' && <MorePage />}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );
