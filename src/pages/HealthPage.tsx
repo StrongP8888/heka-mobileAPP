@@ -3,6 +3,7 @@ import type { Medication } from '../types';
 import { mockMedications, mockAdherenceTrend } from '../mock/data';
 import AddMedicationForm from '../components/health/AddMedicationForm';
 import HealthCheckSection from '../components/health/HealthCheckSection';
+import SupplementSection from '../components/health/SupplementSection';
 
 type SubTab = 'medication' | 'supplements' | 'education';
 
@@ -210,13 +211,11 @@ export default function HealthPage() {
       )}
 
       {!showAddForm && subTab === 'supplements' && (
-        <div className="flex-1 flex items-center justify-center px-8">
-          <div className="text-center">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-heka-purple/10 flex items-center justify-center text-2xl">🧴</div>
-            <p className="text-sm text-heka-text-secondary">保健食品管理</p>
-            <p className="text-xs text-gray-400 mt-1">AI 辨識・知識庫搜尋・情境建議</p>
-            <p className="text-[10px] text-heka-purple mt-2">P2 開發中</p>
-          </div>
+        <div className="px-4">
+          <SupplementSection
+            currentMeds={medications}
+            onAddToMedList={(med) => setMedications((prev) => [...prev, med])}
+          />
         </div>
       )}
 

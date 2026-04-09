@@ -227,6 +227,45 @@ export default function HealthCheckSection() {
           </div>
         );
       })}
+
+      {/* AI Education log */}
+      <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-white/60 mt-4">
+        <h3 className="text-sm font-semibold text-heka-text mb-3">🐧 今日 AI 衛教紀錄</h3>
+        <div className="space-y-2">
+          {[
+            { time: '10:30', topic: '高血壓飲食注意', content: '小美向奶奶解說了少鹽飲食的重要性，建議每日鈉攝取量不超過 2000mg' },
+            { time: '14:15', topic: '膝蓋保養小知識', content: '提醒奶奶久坐後要適度活動膝蓋，做簡單的伸展運動' },
+          ].map((log) => (
+            <div key={log.time} className="bg-gray-50/80 rounded-xl px-3 py-2.5">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[10px] text-heka-purple font-medium">{log.time}</span>
+                <span className="text-xs font-medium text-heka-text">{log.topic}</span>
+              </div>
+              <p className="text-[11px] text-heka-text-secondary leading-relaxed">{log.content}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Health knowledge cards */}
+      <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-white/60">
+        <h3 className="text-sm font-semibold text-heka-text mb-3">📖 健康知識卡</h3>
+        <div className="space-y-2">
+          {[
+            { emoji: '🩸', title: '什麼是 HbA1c？', content: '糖化血色素反映過去 2-3 個月的平均血糖值，比單次血糖測量更能反映長期控制狀況。正常值 < 5.7%。' },
+            { emoji: '🦴', title: '長輩補鈣小撇步', content: '鈣片建議隨餐或飯後服用，搭配維生素 D 可提升吸收率。避免與咖啡、茶同時服用。' },
+            { emoji: '💊', title: '為什麼要定時量血壓？', content: '每天固定時間量血壓能準確追蹤趨勢。建議早上起床後和睡前各量一次，安靜坐 5 分鐘後再測量。' },
+          ].map((card) => (
+            <div key={card.title} className="bg-heka-purple/5 rounded-xl px-3 py-3 border border-heka-purple/10">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm">{card.emoji}</span>
+                <p className="text-xs font-semibold text-heka-text">{card.title}</p>
+              </div>
+              <p className="text-[11px] text-heka-text-secondary leading-relaxed">{card.content}</p>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
