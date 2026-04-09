@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import type { Medication } from '../types';
 import { mockMedications, mockAdherenceTrend } from '../mock/data';
-
+import AddMedicationForm from '../components/health/AddMedicationForm';
 
 type SubTab = 'medication' | 'supplements' | 'education';
 
 export default function HealthPage() {
   const [subTab, setSubTab] = useState<SubTab>('medication');
   const [medications, setMedications] = useState<Medication[]>(mockMedications);
+  const [showAddForm, setShowAddForm] = useState(false);
 
   const toggleTaken = (medId: string, slotIdx: number) => {
     setMedications((prev) =>
@@ -58,8 +59,26 @@ export default function HealthPage() {
         </div>
       </header>
 
-      {subTab === 'medication' && (
+      {showAddForm && (
+        <AddMedicationForm
+          onSave={(med) => { setMedications((prev) => [...prev, med]); setShowAddForm(false); }}
+          onCancel={() => setShowAddForm(false)}
+        />
+      )}
+
+      {!showAddForm && subTab === 'medication' && (
         <div className="px-4 space-y-4">
+          {/* Add button */}
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="w-full py-3 rounded-2xl bg-heka-purple text-white flex items-center justify-center gap-2 text-sm font-medium shadow-sm hover:bg-heka-purple-dark transition-colors cursor-pointer"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            新增藥物 / 保健食品
+          </button>
+
           {/* Drug interaction warnings */}
           {uniqueWarnings.length > 0 && (
             <div className="bg-red-50 rounded-2xl p-4 border border-red-100">
@@ -189,7 +208,7 @@ export default function HealthPage() {
         </div>
       )}
 
-      {subTab === 'supplements' && (
+      {!showAddForm && subTab === 'supplements' && (
         <div className="flex-1 flex items-center justify-center px-8">
           <div className="text-center">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-heka-purple/10 flex items-center justify-center text-2xl">🧴</div>
@@ -200,7 +219,7 @@ export default function HealthPage() {
         </div>
       )}
 
-      {subTab === 'education' && (
+      {!showAddForm && subTab === 'education' && (
         <div className="flex-1 flex items-center justify-center px-8">
           <div className="text-center">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-heka-purple/10 flex items-center justify-center text-2xl">📋</div>
