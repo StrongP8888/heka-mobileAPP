@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react';
 import type { Medication } from '../../types';
+import { recognizeImage, preprocessImage, type RecognitionResult } from '../../services/recognitionService';
+import RecognitionConfirm from './RecognitionConfirm';
 
 interface SupplementInfo {
   id: string;
@@ -58,16 +60,36 @@ export default function SupplementSection({ currentMeds, onAddToMedList }: Props
   const [selectedSupplement, setSelectedSupplement] = useState<SupplementInfo | null>(null);
   const [activeScenario, setActiveScenario] = useState<string | null>(null);
   const [scanLoading, setScanLoading] = useState(false);
+  const [recognitionResult, setRecognitionResult] = useState<RecognitionResult | null>(null);
+  const [capturedImageUrl, setCapturedImageUrl] = useState<string | undefined>();
 
   const cameraRef = useRef<HTMLInputElement>(null);
   const albumRef = useRef<HTMLInputElement>(null);
 
-  const handleScan = () => {
+  const handleScan = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
     setScanLoading(true);
-    setTimeout(() => {
-      setScanLoading(false);
-      setSelectedSupplement(knowledgeBase[1]); // mock: 葡萄糖胺
-    }, 1500);
+    setCapturedImageUrl(URL.createObjectURL(files[0]));
+    const { base64, mediaType } = await preprocessImage(files[0]);
+    const result = await recognizeImage(base64, mediaType, 'supplement');
+    setRecognitionResult(result);
+    setScanLoading(false);
+  };
+
+  const handleConfirmScan = (result: RecognitionResult) => {
+    if (result.recognized && result.scene === 'supplement') {
+      // Convert recognition to SupplementInfo for detail view
+      setSelectedSupplement({
+        id: `scan-${Date.now()}`,
+        name: result.productName.zh || result.productName.value,
+        brand: result.brand.value,
+        ingredients: result.keyIngredients.map((i) => i.name),
+        effects: result.healthClaims,
+        dosage: result.recommendedDosage.value,
+        interactions: [],
+      });
+    }
+    setRecognitionResult(null);
   };
 
   const elderSupplements = currentMeds.filter((m) => m.type === 'supplement');
@@ -97,6 +119,19 @@ export default function SupplementSection({ currentMeds, onAddToMedList }: Props
     });
     setSelectedSupplement(null);
   };
+
+  // Recognition confirm screen
+  if (recognitionResult) {
+    return (
+      <RecognitionConfirm
+        result={recognitionResult}
+        imageUrl={capturedImageUrl}
+        onConfirm={handleConfirmScan}
+        onRetake={() => { setRecognitionResult(null); cameraRef.current?.click(); }}
+        onCancel={() => setRecognitionResult(null)}
+      />
+    );
+  }
 
   // Detail view
   if (selectedSupplement) {
@@ -171,8 +206,8 @@ export default function SupplementSection({ currentMeds, onAddToMedList }: Props
   return (
     <div className="space-y-4">
       {/* Hidden inputs */}
-      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={() => handleScan()} />
-      <input ref={albumRef} type="file" accept="image/*" className="hidden" onChange={() => handleScan()} />
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleScan(e.target.files)} />
+      <input ref={albumRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleScan(e.target.files)} />
 
       {/* Search + scan */}
       <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-white/60">

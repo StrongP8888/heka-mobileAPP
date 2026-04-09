@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import MiniLineChart from '../charts/MiniLineChart';
+import { recognizeImage, preprocessImage, type RecognitionResult } from '../../services/recognitionService';
+import RecognitionConfirm from './RecognitionConfirm';
 
 interface HealthMetric {
   id: string;
@@ -82,6 +84,42 @@ export default function HealthCheckSection() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [editDate, setEditDate] = useState('');
+  const [scanLoading, setScanLoading] = useState(false);
+  const [recognitionResult, setRecognitionResult] = useState<RecognitionResult | null>(null);
+  const [capturedImageUrl, setCapturedImageUrl] = useState<string | undefined>();
+  const scanCameraRef = useRef<HTMLInputElement>(null);
+  const scanAlbumRef = useRef<HTMLInputElement>(null);
+
+  const handleScanFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setScanLoading(true);
+    setCapturedImageUrl(URL.createObjectURL(files[0]));
+    const { base64, mediaType } = await preprocessImage(files[0]);
+    const result = await recognizeImage(base64, mediaType, 'healthcheck');
+    setRecognitionResult(result);
+    setScanLoading(false);
+  };
+
+  const handleConfirmScan = (result: RecognitionResult) => {
+    if (result.recognized && result.scene === 'healthcheck') {
+      // Merge recognized metrics into existing metrics
+      const date = result.reportDate || new Date().toISOString().slice(0, 10);
+      const dateLabel = date.slice(5).replace('-', '/');
+      setMetrics((prev) => {
+        const updated = [...prev];
+        for (const rm of result.metrics) {
+          const existing = updated.find((m) => m.name.includes(rm.name) || rm.name.includes(m.name));
+          if (existing) {
+            existing.value = rm.value;
+            existing.date = date.replace(/-/g, '/');
+            existing.history = [...existing.history, { date: dateLabel, value: rm.value }];
+          }
+        }
+        return updated;
+      });
+    }
+    setRecognitionResult(null);
+  };
 
   const filtered = filter === '全部' ? metrics : metrics.filter((m) => m.category === filter);
 
@@ -105,11 +143,54 @@ export default function HealthCheckSection() {
     setEditingId(null);
   };
 
+  // Scan confirmation
+  if (recognitionResult) {
+    return (
+      <RecognitionConfirm
+        result={recognitionResult}
+        imageUrl={capturedImageUrl}
+        onConfirm={handleConfirmScan}
+        onRetake={() => { setRecognitionResult(null); scanCameraRef.current?.click(); }}
+        onCancel={() => setRecognitionResult(null)}
+      />
+    );
+  }
+
+  if (scanLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-heka-purple/10 flex items-center justify-center animate-pulse"><span className="text-2xl">🔍</span></div>
+          <p className="text-sm text-heka-text">正在辨識健檢報告...</p>
+          <p className="text-xs text-heka-text-secondary mt-1">AI 正在讀取數值</p>
+        </div>
+      </div>
+    );
+  }
+
   // Count statuses
   const abnormalCount = metrics.filter((m) => m.value !== null && (m.value < m.normalRange.min || m.value > m.normalRange.max)).length;
 
   return (
     <div className="space-y-4">
+      {/* Hidden scan inputs */}
+      <input ref={scanCameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleScanFiles(e.target.files)} />
+      <input ref={scanAlbumRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleScanFiles(e.target.files)} />
+
+      {/* Scan buttons */}
+      <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-white/60">
+        <p className="text-sm font-semibold text-heka-text mb-2">📸 拍照匯入健檢報告</p>
+        <p className="text-xs text-heka-text-secondary mb-3">拍攝健檢報告，AI 自動讀取數值</p>
+        <div className="flex gap-2">
+          <button onClick={() => scanCameraRef.current?.click()} className="flex-1 py-2.5 rounded-xl bg-heka-purple text-white text-xs font-medium cursor-pointer hover:bg-heka-purple-dark transition-colors">
+            📸 拍照辨識
+          </button>
+          <button onClick={() => scanAlbumRef.current?.click()} className="flex-1 py-2.5 rounded-xl bg-heka-purple/10 text-heka-purple text-xs font-medium cursor-pointer hover:bg-heka-purple/20 transition-colors">
+            🖼 從相簿選取
+          </button>
+        </div>
+      </div>
+
       {/* Summary bar */}
       <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-white/60">
         <div className="flex gap-3 text-center">
