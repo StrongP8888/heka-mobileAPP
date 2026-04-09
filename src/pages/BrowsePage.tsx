@@ -7,7 +7,7 @@ import AccountSettings from '../components/browse/AccountSettings';
 
 type SubPage = null | 'album' | 'sensor' | 'vitals' | 'account';
 
-const menuItems: { id: SubPage & string; label: string; icon: JSX.Element }[] = [
+const menuItems: { id: SubPage & string; label: string; icon: React.ReactNode }[] = [
   {
     id: 'album',
     label: '相簿',

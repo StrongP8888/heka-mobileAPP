@@ -483,7 +483,7 @@ export default function PhotoAlbum({ onBack }: Props) {
 }
 
 function ActionButton({ icon, label, sublabel, onClick }: {
-  icon: JSX.Element;
+  icon: React.ReactNode;
   label: string;
   sublabel: string;
   onClick: () => void;

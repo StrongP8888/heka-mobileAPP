@@ -5,7 +5,7 @@ interface Props {
   onTabChange: (tab: TabId) => void;
 }
 
-const tabs: { id: TabId; label: string; icon: (active: boolean) => JSX.Element }[] = [
+const tabs: { id: TabId; label: string; icon: (active: boolean) => React.ReactNode }[] = [
   {
     id: 'summary',
     label: '摘要',

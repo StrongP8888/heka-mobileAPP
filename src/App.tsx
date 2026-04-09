@@ -7,7 +7,7 @@ import AnalysisPage from './pages/AnalysisPage';
 import RemindersPage from './pages/RemindersPage';
 import BrowsePage from './pages/BrowsePage';
 
-const pages: Record<TabId, () => JSX.Element> = {
+const pages: Record<TabId, () => React.ReactNode> = {
   summary: SummaryPage,
   share: SharePage,
   analysis: AnalysisPage,
