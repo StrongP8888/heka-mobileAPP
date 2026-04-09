@@ -1,12 +1,14 @@
 import { useState, useRef } from 'react';
 import type { Medication } from '../../types';
+import { recognizeImage, preprocessImage, type RecognitionResult } from '../../services/recognitionService';
+import RecognitionConfirm from './RecognitionConfirm';
 
 interface Props {
   onSave: (med: Medication) => void;
   onCancel: () => void;
 }
 
-type EntryMode = 'choose' | 'scan' | 'manual';
+type EntryMode = 'choose' | 'scan' | 'confirm' | 'manual';
 
 const typeOptions: { value: Medication['type']; label: string }[] = [
   { value: 'prescription', label: '處方藥' },
@@ -31,21 +33,31 @@ export default function AddMedicationForm({ onSave, onCancel }: Props) {
   const [frequency, setFrequency] = useState<Medication['frequency']>('每日');
   const [timeSlots, setTimeSlots] = useState<string[]>(['08:00']);
   const [scanResult, setScanResult] = useState<{ name: string; dosage: string; category: string } | null>(null);
+  const [recognitionResult, setRecognitionResult] = useState<RecognitionResult | null>(null);
+  const [capturedImageUrl, setCapturedImageUrl] = useState<string | undefined>();
 
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
 
-  const handleScan = (files: FileList | null) => {
+  const handleScan = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    // Mock AI recognition
-    setTimeout(() => {
-      setScanResult({ name: '葡萄糖胺', dosage: '1500mg', category: '骨質保健' });
-      setName('葡萄糖胺');
-      setDosage('1500mg');
-      setCategory('骨質保健');
-      setType('supplement');
-      setMode('manual');
-    }, 1200);
+    setMode('scan');
+    setCapturedImageUrl(URL.createObjectURL(files[0]));
+    const { base64, mediaType } = await preprocessImage(files[0]);
+    const result = await recognizeImage(base64, mediaType, 'medication');
+    setRecognitionResult(result);
+    setMode('confirm');
+  };
+
+  const handleConfirm = (result: RecognitionResult) => {
+    if (result.recognized && result.scene === 'medication') {
+      setName(result.drugName.zh);
+      setDosage(result.dosage.value);
+      setCategory('心血管');
+      setType(result.type === 'otc' ? 'supplement' : 'prescription');
+      setScanResult({ name: result.drugName.zh, dosage: result.dosage.value, category: '心血管' });
+    }
+    setMode('manual');
   };
 
   const addTimeSlot = () => setTimeSlots((prev) => [...prev, '12:00']);
@@ -73,8 +85,8 @@ export default function AddMedicationForm({ onSave, onCancel }: Props) {
       <div className="flex flex-col min-h-screen pb-24">
         <Header title="新增藥物" onCancel={onCancel} />
         <div className="px-4 space-y-3">
-          <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { handleScan(e.target.files); setMode('scan'); }} />
-          <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { handleScan(e.target.files); setMode('scan'); }} />
+          <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleScan(e.target.files)} />
+          <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleScan(e.target.files)} />
 
           <button
             onClick={() => cameraRef.current?.click()}
@@ -144,6 +156,19 @@ export default function AddMedicationForm({ onSave, onCancel }: Props) {
           </div>
         </div>
       </div>
+    );
+  }
+
+  // === Confirmation screen ===
+  if (mode === 'confirm' && recognitionResult) {
+    return (
+      <RecognitionConfirm
+        result={recognitionResult}
+        imageUrl={capturedImageUrl}
+        onConfirm={handleConfirm}
+        onRetake={() => { setMode('choose'); setRecognitionResult(null); }}
+        onCancel={onCancel}
+      />
     );
   }
 
